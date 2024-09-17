@@ -13,6 +13,7 @@ import 'models/quiz.dart';
 class ApiService {
   final String baseUrl;
   String? _token;
+  String? _refreshToken;
 
   ApiService({required this.baseUrl});
 
@@ -30,6 +31,7 @@ class ApiService {
       throw Exception('Token is null, authentication failed.');
     }
 
+    // await _ensureValidToken();
     final headers = {
       'Authorization': 'Bearer $_token',
       'Content-Type': 'application/json',
@@ -383,7 +385,8 @@ class ApiService {
         print('User profile JSON response: $jsonResponse');
 
         final profile = Profile.fromJson(jsonResponse);
-        print('Parsed Profile: ${profile.username}, Role: ${profile.role}');
+        print(
+            'Parsed Profile: ${profile.username}, Role: ${profile.role}, token: ${profile.token}');
         return profile;
       } else {
         print('Error fetching profile: ${response.statusCode}');
@@ -392,6 +395,20 @@ class ApiService {
     } catch (e) {
       print('Error in fetchUserProfile: $e');
       throw Exception('Failed to fetch user profile');
+    }
+  }
+
+  Future<void> generateAINoteForModule(int moduleId, String topic) async {
+    final response = await _performHttpRequest(
+      url: baseUrl + 'modules/$moduleId/generate-notes/',
+      requestType: 'POST',
+      body: {'topic': topic},
+    );
+
+    if (response.statusCode == 201) {
+      debugPrint('AI-generated note created successfully');
+    } else {
+      throw Exception('Failed to create AI-generated note');
     }
   }
 }

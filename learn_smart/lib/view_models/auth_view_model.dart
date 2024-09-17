@@ -11,6 +11,7 @@ class AuthViewModel extends ChangeNotifier {
     id: 1,
     imageUrl: 'imageUrl',
     token: 'token',
+    refreshToken: 'refreshToken',
     role: 'role',
     email: 'email',
   );
@@ -70,15 +71,42 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  /// Logout and clear user data
   void logout() {
     _user = User(
       username: 'username',
       id: 1,
       imageUrl: 'imageUrl',
       token: null,
+      refreshToken: null,
       role: 'role',
       email: 'email',
     );
     notifyListeners();
+  }
+
+  /// Refresh the access token using the refresh token
+  Future<void> refreshToken() async {
+    if (_user.refreshToken == null) {
+      throw Exception('No refresh token available');
+    }
+
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:8000/api/token/refresh/'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'refresh': _user.refreshToken,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      _user.token = data['access']; // Update the access token
+      notifyListeners(); // Notify listeners about token update
+    } else {
+      throw Exception('Failed to refresh token');
+    }
   }
 }

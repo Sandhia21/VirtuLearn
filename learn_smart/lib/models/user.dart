@@ -3,19 +3,20 @@ import 'package:flutter/foundation.dart';
 class User extends ChangeNotifier {
   String? username;
   String? token;
+  String? refreshToken;
   int? id;
   String? imageUrl;
   String? role;
   String? email;
 
-  User({
-    required this.username,
-    required this.id,
-    required this.imageUrl,
-    required this.token,
-    required this.role,
-    required this.email,
-  });
+  User(
+      {required this.username,
+      required this.id,
+      required this.imageUrl,
+      required this.token,
+      required this.role,
+      required this.email,
+      required this.refreshToken});
 
   // Factory method to create a User instance from JSON
   factory User.fromJson(Map<String, dynamic> json) {
@@ -25,6 +26,7 @@ class User extends ChangeNotifier {
       role: json['user']['role'],
       imageUrl: json['user']['image'],
       token: json['access'],
+      refreshToken: json['refresh'],
       email: json['user']['email'],
     );
   }
@@ -41,10 +43,6 @@ class User extends ChangeNotifier {
   }
 
   // Method to update only the token
-  void updateToken(String? newToken) {
-    token = newToken;
-    notifyListeners(); // Notify listeners that the token has been updated
-  }
 
   // Check if the user is a student
   bool isStudent() {

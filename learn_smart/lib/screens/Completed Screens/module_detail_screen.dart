@@ -3,10 +3,8 @@ import 'package:learn_smart/screens/widgets/app_bar.dart';
 import 'package:learn_smart/api_service.dart';
 import 'package:learn_smart/models/datastore.dart';
 import 'package:learn_smart/models/note.dart';
-import 'package:learn_smart/models/quiz.dart';
 import 'package:provider/provider.dart';
 import '../../view_models/auth_view_model.dart';
-import 'quiz_detail_screen.dart';
 import 'notes_detail_screen.dart';
 
 class ModuleDetailScreen extends StatefulWidget {
@@ -55,7 +53,6 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen>
       });
 
       await _apiService.fetchNotes(widget.moduleId);
-      await _apiService.fetchQuizzes(widget.moduleId);
 
       setState(() {
         _isLoading = false;
@@ -149,88 +146,134 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen>
   Widget _buildNotesSection() {
     final notes = DataStore.getNotes(widget.moduleId);
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: notes.length,
-      itemBuilder: (context, index) {
-        final Note note = notes[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.purple[100],
-            child: const Icon(Icons.note, color: Colors.purple),
-          ),
-          title: Text(note.title ?? 'Untitled Note'),
-          subtitle: Text(note.content ?? 'No content available'),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => NotesDetailScreen(
-                  noteId: note.id,
-                  moduleId: widget.moduleId,
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8.0),
+            itemCount: notes.length,
+            itemBuilder: (context, index) {
+              final Note note = notes[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.purple[100],
+                  child: const Icon(Icons.note, color: Colors.purple),
                 ),
-              ),
-            );
-          },
-        );
-      },
+                title: Text(note.title ?? 'Untitled Note'),
+                // subtitle: Text(note.content ?? 'No content available'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => NotesDetailScreen(
+                        noteId: note.id,
+                        moduleId: widget.moduleId,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton.icon(
+            onPressed: () => _showAIInputDialog(context),
+            icon: const Icon(Icons.auto_fix_high),
+            label: const Text('Use AI to Create Notes'),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildQuizzesSection() {
-    final quizzes = DataStore.getQuizzes(widget.moduleId);
+    // Your quiz section code here
+    return Container();
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: quizzes.length,
-      itemBuilder: (context, index) {
-        final Quiz quiz = quizzes[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.blue[100],
-            child: const Icon(Icons.quiz, color: Colors.blue),
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: () {
+        if (_tabController.index == 0) {
+          _showCreateNoteDialog(context);
+        }
+      },
+      backgroundColor: Colors.blue,
+      child: const Icon(Icons.add),
+    );
+  }
+
+  // Function to show the AI input dialog
+  void _showAIInputDialog(BuildContext context) {
+    final _formKey = GlobalKey<FormState>();
+    String? _topic;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Generate Notes Using AI'),
+          content: Form(
+            key: _formKey,
+            child: TextFormField(
+              decoration: const InputDecoration(labelText: 'Enter Topic'),
+              onSaved: (value) {
+                _topic = value;
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a topic';
+                }
+                return null;
+              },
+            ),
           ),
-          title: Text(quiz.title ?? 'Untitled Quiz'),
-          subtitle: Text(quiz.description ?? 'No description available'),
-          onTap: () {
-            final authViewModel =
-                Provider.of<AuthViewModel>(context, listen: false);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => QuizDetailScreen(
-                  quiz: quiz,
-                  isStudentEnrolled: authViewModel.user.isStudent(),
-                  moduleId: widget.moduleId,
-                ),
-              ),
-            );
-          },
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (_formKey.currentState!.validate()) {
+                  _formKey.currentState!.save();
+                  if (_topic != null) {
+                    await _createAINote(
+                        topic: _topic!, moduleId: widget.moduleId);
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('AI note created')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildFloatingActionButton() {
-    return Consumer<AuthViewModel>(
-      builder: (context, authViewModel, child) {
-        if (authViewModel.user.role == 'student') {
-          return Container();
-        }
-
-        return FloatingActionButton(
-          onPressed: () {
-            if (_tabController.index == 0) {
-              _showCreateNoteDialog(context);
-            } else {
-              _showCreateQuizDialog(context);
-            }
-          },
-          backgroundColor: Colors.blue,
-          child: const Icon(Icons.add),
-        );
-      },
-    );
+  Future<void> _createAINote(
+      {required String topic, required int moduleId}) async {
+    try {
+      await _apiService.generateAINoteForModule(moduleId, topic);
+      setState(() {
+        _isLoading = true;
+      });
+      await _apiService.fetchNotes(moduleId);
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error creating AI-generated note: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   void _showCreateNoteDialog(BuildContext context) {
@@ -295,116 +338,6 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen>
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Note created successfully')),
-                  );
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showCreateQuizDialog(BuildContext context) {
-    final _formKey = GlobalKey<FormState>();
-    String? _title;
-    String? _description;
-    String? _quizType;
-    String? _category;
-    List<Map<String, dynamic>> questions = [];
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Create Quiz'),
-          content: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  decoration: const InputDecoration(labelText: 'Title'),
-                  onSaved: (value) {
-                    _title = value;
-                    debugPrint('Quiz title: $_title');
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      debugPrint('Quiz title validation failed');
-                      return 'Please enter a title';
-                    }
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  decoration: const InputDecoration(labelText: 'Description'),
-                  onSaved: (value) {
-                    _description = value;
-                    debugPrint('Quiz description: $_description');
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      debugPrint('Quiz description validation failed');
-                      return 'Please enter a description';
-                    }
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  decoration: const InputDecoration(labelText: 'Quiz Type'),
-                  onSaved: (value) {
-                    _quizType = value;
-                    debugPrint('Quiz type: $_quizType');
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      debugPrint('Quiz type validation failed');
-                      return 'Please enter the quiz type';
-                    }
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  decoration: const InputDecoration(labelText: 'Category'),
-                  onSaved: (value) {
-                    _category = value;
-                    debugPrint('Quiz category: $_category');
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      debugPrint('Quiz category validation failed');
-                      return 'Please enter the quiz category';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  _formKey.currentState!.save();
-                  debugPrint(
-                      'Creating quiz with data: $_title, $_description, $_quizType, $_category');
-                  await _apiService.createQuiz(
-                    widget.moduleId,
-                    _title ?? 'Untitled Quiz',
-                    _description ?? 'No description provided',
-                    _quizType ?? 'QNA',
-                    _category ?? 'QNA',
-                    questions,
-                  );
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Quiz created successfully')),
                   );
                 }
               },

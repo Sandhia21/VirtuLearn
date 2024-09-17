@@ -13,6 +13,7 @@ class Profile extends User {
     String? token, // Nullable if necessary
     String? role, // Nullable if necessary
     String? email, // Nullable if necessary
+    String? refreshToken,
     required this.enrolledCourses,
     required this.createdCourses,
   }) : super(
@@ -20,6 +21,7 @@ class Profile extends User {
           id: id ?? 0, // Provide default if null
           imageUrl: imageUrl ?? 'No Image', // Provide default if null
           token: token ?? 'No Token', // Provide default if null
+          refreshToken: refreshToken ?? 'No Token', // Provide default if null
           role: role ?? 'No Role', // Provide default if null
           email: email ?? 'No Email', // Provide default if null
         );

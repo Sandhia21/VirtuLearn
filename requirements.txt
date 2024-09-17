@@ -2,3 +2,4 @@ django
 djangorestframework
 djangorestframework-simplejwt
 Pillow
+g4f[all]

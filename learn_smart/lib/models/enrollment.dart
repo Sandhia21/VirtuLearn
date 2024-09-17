@@ -35,6 +35,7 @@ class EnrollmentRequest {
           imageUrl: 'default_profile.png',
           email: '',
           token: '',
+          refreshToken: '',
           role: '',
         ),
         status: 'unknown',

@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:learn_smart/models/course.dart';
 import 'package:learn_smart/models/module.dart';
 
+import '../../models/user.dart';
+
 class CourseDetailScreen extends StatefulWidget {
   final int courseId;
 
@@ -22,6 +24,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  User user = User(
+      username: 'username',
+      id: 0,
+      imageUrl: 'imageUrl',
+      token: 'token',
+      refreshToken: 're-token',
+      role: 'role',
+      email: 'email');
 
   @override
   void initState() {
@@ -30,6 +40,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
       _apiService = ApiService(baseUrl: 'http://10.0.2.2:8000/api/');
       _apiService.updateToken(authViewModel.user.token ?? '');
+      user = authViewModel.user;
 
       try {
         await _apiService.getCourseDetail(widget.courseId);
@@ -197,6 +208,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10.0),
           child: ModuleCard(
+            isStudent: user.isStudent(),
             module: module,
             onTap: () {
               Get.toNamed('/module-detail', arguments: {
@@ -427,13 +439,14 @@ class ModuleCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
+  final bool? isStudent;
 
-  ModuleCard({
-    required this.module,
-    this.onEdit,
-    this.onDelete,
-    this.onTap,
-  });
+  ModuleCard(
+      {required this.module,
+      this.onEdit,
+      this.onDelete,
+      this.onTap,
+      this.isStudent});
 
   @override
   Widget build(BuildContext context) {
@@ -477,12 +490,12 @@ class ModuleCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onEdit != null)
+              if (onEdit != null && !isStudent!)
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.white),
                   onPressed: onEdit,
                 ),
-              if (onDelete != null)
+              if (onDelete != null && !isStudent!)
                 IconButton(
                   icon: const Icon(Icons.delete, color: Colors.white),
                   onPressed: onDelete,

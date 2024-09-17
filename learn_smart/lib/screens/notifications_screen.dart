@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:learn_smart/api_service.dart';
 import 'package:learn_smart/view_models/auth_view_model.dart';
 import 'package:learn_smart/screens/widgets/app_bar.dart';
+import 'package:learn_smart/screens/widgets/bottom_navigation.dart'; // Import the BottomNavigation widget
+import 'package:motion_tab_bar_v2/motion-tab-controller.dart'; // Import for the tab bar controller
+
 import '../models/enrollment.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -10,15 +13,27 @@ class NotificationsScreen extends StatefulWidget {
   _NotificationsScreenState createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with TickerProviderStateMixin {
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
   List<StudentEnrollmentRequest> _studentEnrollmentRequests = [];
 
+  late MotionTabBarController
+      _motionTabBarController; // Declare controller for BottomNavigation
+  int _selectedIndex = 2; // Default index for the Notifications tab
+
   @override
   void initState() {
     super.initState();
+    _motionTabBarController = MotionTabBarController(
+      initialIndex:
+          _selectedIndex, // Set the initial index for Notifications tab
+      length: 4,
+      vsync: this,
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
       final apiService = ApiService(baseUrl: 'http://10.0.2.2:8000/api/');
@@ -28,9 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (authViewModel.user.isStudent()) {
           // Fetch student enrollment requests
           await _fetchStudentEnrollmentRequests(apiService);
-        } else {
-          // Handle teacher requests (use the original logic for teachers)
-        }
+        } else {}
       } else {
         print('Token is null, cannot fetch enrollment requests');
       }
@@ -57,6 +70,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   @override
+  void dispose() {
+    _motionTabBarController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(title: 'Notifications'),
@@ -68,6 +87,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               : _studentEnrollmentRequests.isEmpty
                   ? const Center(child: Text('No Updates Yet'))
                   : _buildNotificationsList(),
+      bottomNavigationBar: BottomNavigation(
+        // Add the BottomNavigation bar here
+        controller: _motionTabBarController,
+        currentIndex: _selectedIndex,
+      ),
     );
   }
 
